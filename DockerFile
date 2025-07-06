@@ -1,31 +1,33 @@
-# Use Windows Server Core with Node.js pre-installed
+# Use Windows Server Core base image
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
-# Set environment variables for Node.js
+# Use PowerShell for RUN commands
+SHELL ["powershell", "-Command"]
+
+# Set environment variables
 ENV NODE_VERSION=20.2.0
 ENV NODE_DOWNLOAD_URL=https://nodejs.org/dist/v20.2.0/node-v20.2.0-win-x64.zip
+
+# Download and extract Node.js
+RUN Invoke-WebRequest -Uri $env:NODE_DOWNLOAD_URL -OutFile node.zip ; `
+    Expand-Archive -Path node.zip -DestinationPath C:\ ; `
+    Rename-Item -Path "C:\node-v$env:NODE_VERSION-win-x64" -NewName C:\nodejs ; `
+    Remove-Item -Force node.zip
+
+# Update PATH
+ENV PATH="C:\\nodejs;C:\\nodejs\\bin;$PATH"
 
 # Set working directory
 WORKDIR /app
 
-# Download and extract Node.js
-RUN powershell -Command `
-    Invoke-WebRequest -Uri %NODE_DOWNLOAD_URL% -OutFile node.zip ; `
-    Expand-Archive node.zip -DestinationPath C:\ ; `
-    Rename-Item "C:\node-v$env:NODE_VERSION-win-x64" C:\nodejs ; `
-    Remove-Item -Force node.zip
-
-# Update PATH
-ENV PATH="C:\\nodejs;C:\\nodejs\\bin;%PATH%"
-
-# Copy app files
+# Copy project files
 COPY . .
 
 # Install dependencies
 RUN npm install
 
-# Expose the port (modify if needed)
+# Expose the port your app listens on (change if needed)
 EXPOSE 3000
 
-# Command to run your app
+# Start the app
 CMD ["node", "index.js"]
