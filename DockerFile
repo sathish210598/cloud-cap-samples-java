@@ -1,15 +1,31 @@
-# Stage 1: Build
-FROM node:20.2.0-bullseye-slim AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+# Use Windows Server Core with Node.js pre-installed
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
-# Stage 2: Runtime
-FROM node:20.2.0-bullseye-slim
+# Set environment variables for Node.js
+ENV NODE_VERSION=20.2.0
+ENV NODE_DOWNLOAD_URL=https://nodejs.org/dist/v20.2.0/node-v20.2.0-win-x64.zip
+
+# Set working directory
 WORKDIR /app
-COPY --from=build /app/package*.json ./
-RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
-CMD ["node", "dist/server.js"]
+
+# Download and extract Node.js
+RUN powershell -Command `
+    Invoke-WebRequest -Uri %NODE_DOWNLOAD_URL% -OutFile node.zip ; `
+    Expand-Archive node.zip -DestinationPath C:\ ; `
+    Rename-Item "C:\node-v$env:NODE_VERSION-win-x64" C:\nodejs ; `
+    Remove-Item -Force node.zip
+
+# Update PATH
+ENV PATH="C:\\nodejs;C:\\nodejs\\bin;%PATH%"
+
+# Copy app files
+COPY . .
+
+# Install dependencies
+RUN npm install
+
+# Expose the port (modify if needed)
+EXPOSE 3000
+
+# Command to run your app
+CMD ["node", "index.js"]
