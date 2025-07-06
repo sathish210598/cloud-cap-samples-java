@@ -1,29 +1,28 @@
-# Use Windows-compatible Node.js base image
+# Use Windows Server Core base image
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
-# Enable PowerShell for RUN commands
-SHELL ["powershell", "-Command"]
-
-# Download and install Node.js (v20.2.0)
-RUN Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.2.0/node-v20.2.0-win-x64.zip" -OutFile node.zip ; `
-    Expand-Archive node.zip -DestinationPath C:\ ; `
-    Rename-Item -Path "C:\node-v20.2.0-win-x64" -NewName "C:\nodejs" ; `
+# Download and install Node.js using full PowerShell call
+RUN powershell.exe -Command ^
+    Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.2.0/node-v20.2.0-win-x64.zip" -OutFile node.zip ; ^
+    Expand-Archive -Path node.zip -DestinationPath C:\ ; ^
+    Rename-Item -Path "C:\node-v20.2.0-win-x64" -NewName "C:\nodejs" ; ^
     Remove-Item -Force node.zip
 
 # Add Node.js to PATH
-ENV PATH="C:\\nodejs;C:\\nodejs\\bin;$env:PATH"
+ENV PATH="C:\\nodejs;C:\\nodejs\\bin;$PATH"
 
 # Set working directory
 WORKDIR /app
 
-# Copy app files
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN powershell.exe -Command "npm install"
+
+# Copy remaining app files
 COPY . .
 
-# Install dependencies
-RUN npm install
-
-# Expose the port (adjust if needed)
+# Expose your app port (e.g., 3000)
 EXPOSE 3000
 
-# Run the Node.js app
+# Run your app
 CMD ["node", "index.js"]
